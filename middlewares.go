@@ -30,20 +30,19 @@ func GetLogger(ctx context.Context) (log.Logger, error) {
 	return logger, nil
 }
 
-// Logger injects a logger in each HTTP request context.
-type Logger struct {
+type loggerInjector struct {
 	logger log.Logger
 }
 
-// NewLogger returns a new logger instance.
-func NewLogger(logger log.Logger) func(next http.Handler) http.Handler {
-	l := &Logger{
+// NewLoggerInjector returns a new LoggerInjector middleware.
+func NewLoggerInjector(logger log.Logger) func(next http.Handler) http.Handler {
+	l := &loggerInjector{
 		logger: logger,
 	}
 	return l.middleware
 }
 
-func (l *Logger) middleware(next http.Handler) http.Handler {
+func (l *loggerInjector) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger := log.With(l.logger, "path", r.URL.Path, "method", r.Method)
 		ctx := context.WithValue(r.Context(), contextLogger, logger)
