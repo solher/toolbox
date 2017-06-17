@@ -29,8 +29,7 @@ var (
 		ErrorCode:   "INTERNAL_ERROR",
 		Params:      make(map[string]interface{}),
 	}
-	// HTTPUnavailable indicates that an unexpected error happened during
-	// the domain execution (from go-kit). Probably caused by an overload.
+	// HTTPUnavailable indicates that the desired service is unavailable.
 	HTTPUnavailable = HTTPError{
 		Status:      503,
 		Description: "The service is currently unavailable. Please retry later.",
