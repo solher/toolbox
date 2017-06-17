@@ -3,18 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/go-kit/kit/log"
 
-	"github.com/pkg/errors"
-	"github.com/solher/toolbox/middlewares"
+	"github.com/solher/toolbox"
 )
-
-type stackTracer interface {
-	StackTrace() errors.StackTrace
-}
 
 // NewJSON returns a new JSON instance.
 func NewJSON(debug bool) *JSON {
@@ -31,13 +25,10 @@ type JSON struct {
 
 // RenderError renders a HTTPError and logs it if it's a 500.
 func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError HTTPError, e error) {
-	stack := ""
-	if e, ok := e.(stackTracer); ok && len(e.StackTrace()) > 0 {
-		stack = fmt.Sprintf("%+v", e.StackTrace()[0])
-	}
+	stack := toolbox.GetStack(e)
 
 	if httpError.Status < 500 && httpError.Status >= 600 {
-		if logger, err := middlewares.GetLogger(ctx); err != nil {
+		if logger, err := toolbox.GetLogger(ctx); err != nil {
 			if stack != "" {
 				log.With(logger, "stack", stack)
 			}
