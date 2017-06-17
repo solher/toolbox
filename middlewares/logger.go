@@ -3,9 +3,10 @@ package middlewares
 import (
 	"net/http"
 
+	"context"
+
 	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type key string
