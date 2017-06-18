@@ -25,19 +25,24 @@ type JSON struct {
 
 // RenderError renders a HTTPError and logs it if it's a 500.
 func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError HTTPError, e error) {
-	stack := toolbox.GetStack(e)
+	function, location := toolbox.GetStack(e)
 
 	if httpError.Status < 500 && httpError.Status >= 600 {
 		if logger, err := toolbox.GetLogger(ctx); err != nil {
-			if stack != "" {
-				log.With(logger, "stack", stack)
+			if function != "" && location != "" {
+				log.With(logger, "function", function, "location", location)
 			}
 			logger.Log("status", httpError.Status, "err", e)
 		}
 	}
 
 	if j.debug {
-		j.renderJSON(w, httpError.Status, &DebugHTTPError{HTTPError: httpError, Err: e.Error(), Stack: stack})
+		j.renderJSON(w, httpError.Status, &DebugHTTPError{
+			HTTPError: httpError,
+			Err:       e.Error(),
+			Function:  function,
+			Location:  location,
+		})
 	} else {
 		j.renderJSON(w, httpError.Status, &httpError)
 	}
