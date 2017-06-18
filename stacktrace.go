@@ -15,7 +15,6 @@ type stackTracer interface {
 func GetStack(err error) (function, location string) {
 	if err, ok := err.(stackTracer); ok && len(err.StackTrace()) > 0 {
 		if stack := strings.SplitN(fmt.Sprintf("%+v", err.StackTrace()[0]), "\n\t", 2); len(stack) == 2 {
-			fmt.Println("HERE")
 			function, location = stack[0], stack[1]
 		}
 	}
