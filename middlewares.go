@@ -44,7 +44,7 @@ func NewLoggerInjector(logger log.Logger) func(next http.Handler) http.Handler {
 
 func (l *loggerInjector) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := log.With(l.logger, "path", r.URL.Path, "method", r.Method)
+		logger := log.With(l.logger, "method", r.Method, "path", r.URL.Path)
 		ctx := context.WithValue(r.Context(), contextLogger, logger)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

@@ -27,12 +27,13 @@ type JSON struct {
 func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError HTTPError, e error) {
 	function, location := toolbox.GetStack(e)
 
-	if httpError.Status < 500 && httpError.Status >= 600 {
-		if logger, err := toolbox.GetLogger(ctx); err != nil {
-			if function != "" && location != "" {
-				log.With(logger, "function", function, "location", location)
+	if j.debug || (httpError.Status >= 500 && httpError.Status < 600) {
+		if logger, err := toolbox.GetLogger(ctx); err == nil {
+			logger = log.With(logger, "status", httpError.Status)
+			if location != "" {
+				logger = log.With(logger, "location", location)
 			}
-			logger.Log("status", httpError.Status, "err", e)
+			logger.Log("err", e)
 		}
 	}
 
