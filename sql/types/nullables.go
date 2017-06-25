@@ -98,6 +98,11 @@ func (n *NullTime) Scan(value interface{}) error {
 	return nil
 }
 
+// IsZero is there to facilitate usage with Go templates.
+func (n NullTime) IsZero() bool {
+	return time.Time(n).IsZero()
+}
+
 // MarshalJSON implements the json.Marshaler interface.
 func (n NullTime) MarshalJSON() ([]byte, error) {
 	return time.Time(n).MarshalJSON()

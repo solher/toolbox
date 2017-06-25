@@ -6,43 +6,56 @@ import (
 
 	"sync"
 
-	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
+	"github.com/solher/toolbox"
 )
 
-// Worker allows to convert an endpoint to a worker listening on an event channel.
-type Worker struct {
-	// We also use cancelProcessCtx as a semaphore to know when the worker is processing.
-	cancelProcessCtx context.CancelFunc
-	mutex            sync.Mutex
+// Workable defines objects usable by the worker.
+type Workable interface {
+	Name() string
+	Work(ctx context.Context) error
+}
 
-	logger    log.Logger
-	endpoint  endpoint.Endpoint
-	submitter func(ctx context.Context, response interface{}) error
+// Worker provides a synchronization api to a workable.
+type Worker interface {
+	Name() string
+	Shutdown(ctx context.Context) error
+	Process(ctx context.Context) error
+}
 
-	inputCh    <-chan interface{}
+// worker allows to convert an endpoint to a worker listening on an event channel.
+type worker struct {
+	// We also use cancelWorkCtx as a semaphore to know when the worker is processing.
+	cancelWorkCtx context.CancelFunc
+	mutex         sync.Mutex
+
+	name     string
+	logger   log.Logger
+	workable Workable
+
 	shutdownCh chan chan error
 }
 
-// NewWorker returns a new instance of Worker.
-func NewWorker(logger log.Logger, name string, inputCh <-chan interface{}, endpoint endpoint.Endpoint, submitter func(ctx context.Context, response interface{}) error) *Worker {
-	return &Worker{
-		logger:   log.With(logger, "component", "worker", "name", name),
-		endpoint: endpoint,
-		inputCh:  inputCh,
+// NewWorker returns a new Worker.
+func NewWorker(logger log.Logger, workable Workable) Worker {
+	return &worker{
+		cancelWorkCtx: nil,
+		name:          workable.Name(),
+		logger:        log.With(logger, "component", "worker", "name", workable.Name()),
+		workable:      workable,
 	}
 }
 
 // Shutdown shuts down synchronously and gracefully the worker processing.
-func (w *Worker) Shutdown(ctx context.Context) error {
+func (w *worker) Shutdown(ctx context.Context) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
-	if w.cancelProcessCtx == nil {
+	if w.cancelWorkCtx == nil {
 		return nil
 	}
 
-	w.cancelProcessCtx()
-	w.cancelProcessCtx = nil
+	w.cancelWorkCtx()
+	w.cancelWorkCtx = nil
 
 	callback := make(chan error)
 	w.shutdownCh <- callback
@@ -55,14 +68,15 @@ func (w *Worker) Shutdown(ctx context.Context) error {
 }
 
 // Process launches the worker processing on the input channel.
-func (w *Worker) Process(ctx context.Context) error {
+func (w *worker) Process(ctx context.Context) error {
 	w.mutex.Lock()
-	if w.cancelProcessCtx != nil {
+	if w.cancelWorkCtx != nil {
 		w.mutex.Unlock()
 		return errors.New("worker is already processing")
 	}
 	w.shutdownCh = make(chan chan error)
-	ctx, w.cancelProcessCtx = context.WithCancel(ctx)
+	workCtx, cancelWork := context.WithCancel(ctx)
+	w.cancelWorkCtx = cancelWork
 	w.mutex.Unlock()
 
 	for {
@@ -74,20 +88,15 @@ func (w *Worker) Process(ctx context.Context) error {
 			callback <- nil
 			return nil
 		default:
-			select {
-			case input := <-w.inputCh:
-				output, err := w.endpoint(ctx, input)
-				if err != nil {
-					w.logger.Log("err", err)
-					continue
-				}
-				if err := w.submitter(ctx, output); err != nil {
-					w.logger.Log("err", err)
-					continue
-				}
-			default:
-				continue
+			if err := w.workable.Work(workCtx); err != nil {
+				_, location := toolbox.GetStack(err)
+				w.logger.Log("err", err, "location", location)
 			}
 		}
 	}
+}
+
+// Name returns the name of the worker.
+func (w *worker) Name() string {
+	return w.name
 }
