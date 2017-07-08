@@ -12,7 +12,7 @@ import (
 // Workable defines objects usable by the worker.
 type Workable interface {
 	Name() string
-	Work(ctx context.Context, logger log.Logger)
+	Work(ctx context.Context, l log.Logger)
 }
 
 // Worker provides a synchronization api to a workable.
@@ -29,18 +29,18 @@ type worker struct {
 	mutex         sync.Mutex
 
 	name     string
-	logger   log.Logger
+	l        log.Logger
 	workable Workable
 
 	shutdownCh chan chan error
 }
 
 // NewWorker returns a new Worker.
-func NewWorker(logger log.Logger, workable Workable) Worker {
+func NewWorker(l log.Logger, workable Workable) Worker {
 	return &worker{
 		cancelWorkCtx: nil,
 		name:          workable.Name(),
-		logger:        log.With(logger, "component", workable.Name()),
+		l:             log.With(l, "component", workable.Name()),
 		workable:      workable,
 	}
 }
@@ -87,7 +87,7 @@ func (w *worker) Process(ctx context.Context) error {
 			callback <- nil
 			return nil
 		default:
-			w.workable.Work(workCtx, w.logger)
+			w.workable.Work(workCtx, w.l)
 		}
 	}
 }

@@ -88,3 +88,27 @@ func (j *JSONText) Unmarshal(v interface{}) error {
 func (j JSONText) String() string {
 	return string(j)
 }
+
+// ScanJSON allows easy implementation of the driver.Valuer interface.
+func ScanJSON(source, dest interface{}) (err error) {
+	switch t := source.(type) {
+	case string:
+		if err := json.Unmarshal([]byte(t), dest); err != nil {
+			return err
+		}
+	case []uint8:
+		if err := json.Unmarshal([]byte(t), dest); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return errors.New("Incompatible type for ScanJSON")
+	}
+	return nil
+}
+
+// ValueJSON allows easy implementation of the sql.Scanner interface.
+func ValueJSON(source interface{}) (driver.Value, error) {
+	b, err := json.Marshal(source)
+	return string(b), err
+}
