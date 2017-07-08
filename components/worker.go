@@ -7,13 +7,12 @@ import (
 	"sync"
 
 	"github.com/go-kit/kit/log"
-	"github.com/solher/toolbox"
 )
 
 // Workable defines objects usable by the worker.
 type Workable interface {
 	Name() string
-	Work(ctx context.Context) error
+	Work(ctx context.Context, logger log.Logger)
 }
 
 // Worker provides a synchronization api to a workable.
@@ -41,7 +40,7 @@ func NewWorker(logger log.Logger, workable Workable) Worker {
 	return &worker{
 		cancelWorkCtx: nil,
 		name:          workable.Name(),
-		logger:        log.With(logger, "component", "worker", "name", workable.Name()),
+		logger:        log.With(logger, "component", workable.Name()),
 		workable:      workable,
 	}
 }
@@ -88,10 +87,7 @@ func (w *worker) Process(ctx context.Context) error {
 			callback <- nil
 			return nil
 		default:
-			if err := w.workable.Work(workCtx); err != nil {
-				_, location := toolbox.GetStack(err)
-				w.logger.Log("err", err, "location", location)
-			}
+			w.workable.Work(workCtx, w.logger)
 		}
 	}
 }
