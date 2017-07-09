@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
+	"text/template"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -13,46 +13,48 @@ import (
 	"github.com/solher/toolbox/sql/types"
 )
 
-var getPostgresQueueTmpl = template.Must(template.New("get_postgresQueue").Parse(`
-		WITH queue AS (
-			SELECT id, created_at
-			FROM {{.Table}}
-			WHERE TRUE
-			{{if not .FromTime.IsZero -}}
-			AND created_at >= :from_time
-			{{end -}}
-			{{if .FromID -}}
-			AND id > :from_id
-			{{end -}}
-			ORDER BY created_at, id ASC
-			LIMIT :id_limit
-		)
-		SELECT ARRAY_AGG(id) AS ids, MAX(id) AS last_id, MAX(created_at) AS last_timestamp
-		FROM queue
+var getPostgresQueueTmpl = template.Must(template.New("get_postgres_queue").Parse(`
+		SELECT id, object_id, retries, payload, created_at
+		FROM {{.Table}}
+		WHERE TRUE
+		{{if .FromID -}}
+		AND id > :from_id
+		{{end -}}
+		ORDER BY id ASC
+		LIMIT :id_limit
 	`))
 
+// Task is a standardised queued task.
+type Task struct {
+	ID        uint64         `json:"id"        db:"id"`
+	ObjectID  uint64         `json:"objectId"  db:"object_id"`
+	Retries   uint64         `json:"retries"   db:"retries"`
+	Payload   types.JSONText `json:"payload"   db:"payload"`
+	CreatedAt time.Time      `json:"createdAt" db:"created_at"`
+	Err       error
+}
+
 // NewPostgresQueue returns a worker that synchronizes a postgresQueue table formed as a list of pair documentID/timestamp with a channel.
-func NewPostgresQueue(l log.Logger, db *sqlx.DB, table string, syncTick time.Duration, idCh chan<- uint64, doneCh <-chan uint64) Worker {
+func NewPostgresQueue(l log.Logger, db *sqlx.DB, table string, syncTick time.Duration, outCh chan<- Task, inCh <-chan Task) Worker {
 	return NewWorker(
 		l,
 		&postgresQueue{
 			table:  table,
 			db:     db,
 			ticker: time.NewTicker(syncTick),
-			idCh:   idCh,
-			doneCh: doneCh,
+			outCh:  outCh,
+			inCh:   inCh,
 		},
 	)
 }
 
 type postgresQueue struct {
-	table         string
-	db            *sqlx.DB
-	ticker        *time.Ticker
-	lastID        uint64
-	lastTimestamp time.Time
-	idCh          chan<- uint64
-	doneCh        <-chan uint64
+	table  string
+	db     *sqlx.DB
+	ticker *time.Ticker
+	lastID uint64
+	outCh  chan<- Task
+	inCh   <-chan Task
 }
 
 func (w *postgresQueue) Name() string {
@@ -62,19 +64,31 @@ func (w *postgresQueue) Name() string {
 func (w *postgresQueue) Work(ctx context.Context, l log.Logger) {
 	select {
 	case <-w.ticker.C:
-		ids, lastID, lastTimestamp, err := w.GetQueue(ctx, w.lastID, w.lastTimestamp, cap(w.idCh)-len(w.idCh))
+		tasks, err := w.GetQueue(ctx, w.lastID, cap(w.outCh)-len(w.outCh))
 		if err != nil {
 			l.Log("err", err)
 			return
 		}
-		for _, id := range ids {
-			w.idCh <- id
+		for _, task := range tasks {
+			w.outCh <- task
 		}
-		if lastID != 0 && !lastTimestamp.IsZero() {
-			w.lastID, w.lastTimestamp = lastID, lastTimestamp
+		if len(tasks) > 0 {
+			w.lastID = tasks[len(tasks)-1].ID
 		}
-	case id := <-w.doneCh:
-		if err := w.DeleteFromQueue(ctx, id); err != nil {
+	case task := <-w.inCh:
+		if task.Err != nil && task.Retries < 5 {
+			if err := w.DeleteFromQueue(ctx, task.ID); err != nil {
+				l.Log("err", err)
+				return
+			}
+			task.Retries++
+			if err := w.InsertTask(ctx, &task); err != nil {
+				l.Log("err", err)
+				return
+			}
+			return
+		}
+		if err := w.DeleteFromQueue(ctx, task.ID); err != nil {
 			l.Log("err", err)
 			return
 		}
@@ -84,46 +98,53 @@ func (w *postgresQueue) Work(ctx context.Context, l log.Logger) {
 	}
 }
 
-func (w *postgresQueue) GetQueue(ctx context.Context, fromID uint64, fromTime time.Time, limit int) (ids []uint64, lastID uint64, lastTimestamp time.Time, err error) {
+func (w *postgresQueue) GetQueue(ctx context.Context, fromID uint64, limit int) (tasks []Task, err error) {
 	if limit == 0 {
-		return []uint64{}, 0, lastTimestamp, nil
+		return tasks, nil
 	}
 
 	arg := &struct {
-		FromID   types.NullUint64 `db:"from_id"`
-		FromTime types.NullTime   `db:"from_time"`
-		IDLimit  int              `db:"id_limit"`
-		Table    string
+		FromID  types.NullUint64 `db:"from_id"`
+		IDLimit int              `db:"id_limit"`
+		Table   string
 	}{
-		FromID:   types.NullUint64(fromID),
-		FromTime: types.NullTime(fromTime.UTC()),
-		IDLimit:  limit,
-		Table:    w.table,
+		FromID:  types.NullUint64(fromID),
+		IDLimit: limit,
+		Table:   w.table,
 	}
 	query := bytes.NewBuffer(nil)
 	if err := getPostgresQueueTmpl.Execute(query, arg); err != nil {
-		return nil, 0, lastTimestamp, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	stmt, err := w.db.PrepareNamedContext(ctx, query.String())
 	if err != nil {
-		return nil, 0, lastTimestamp, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	dest := &struct {
-		IDs           types.Uint64Array `db:"ids"`
-		LastID        types.NullUint64  `db:"last_id"`
-		LastTimestamp types.NullTime    `db:"last_timestamp"`
-	}{}
-	if err := stmt.GetContext(ctx, dest, arg); err != nil {
-		return nil, 0, lastTimestamp, errors.WithStack(err)
+	if err := stmt.SelectContext(ctx, &tasks, arg); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	return dest.IDs, uint64(dest.LastID), time.Time(dest.LastTimestamp), nil
+	return tasks, nil
 }
 
 func (w *postgresQueue) DeleteFromQueue(ctx context.Context, id uint64) error {
 	if _, err := w.db.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s WHERE id = $1", w.table), id); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func (w *postgresQueue) InsertTask(ctx context.Context, task *Task) error {
+	_, err := w.db.ExecContext(
+		ctx,
+		fmt.Sprintf("INSERT INTO %s (object_id, retries, payload) VALUES ($1, $2, $3) ON CONFLICT (object_id) DO NOTHING", w.table),
+		task.ObjectID,
+		task.Retries,
+		task.Payload,
+	)
+	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
