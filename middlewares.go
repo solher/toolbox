@@ -1,29 +1,29 @@
 package toolbox
 
 import (
-	"net/http"
-
 	"context"
-
-	"github.com/go-kit/kit/log"
+	"net/http"
 )
 
-type loggerInjector struct {
-	logger log.Logger
-}
+type key string
 
-// NewLoggerInjector returns a new LoggerInjector middleware.
-func NewLoggerInjector(logger log.Logger) func(next http.Handler) http.Handler {
-	l := &loggerInjector{
-		logger: logger,
-	}
+const (
+	reqContextMethod key = "toolbox_req_context_method"
+	reqContextPath   key = "toolbox_req_context_path"
+)
+
+type requestContext struct{}
+
+// NewRequestContext returns a new RequestContext middleware.
+func NewRequestContext() func(next http.Handler) http.Handler {
+	l := &requestContext{}
 	return l.middleware
 }
 
-func (l *loggerInjector) middleware(next http.Handler) http.Handler {
+func (r *requestContext) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := log.With(l.logger, "method", r.Method, "path", r.URL.Path)
-		ctx := context.WithValue(r.Context(), contextLogger, logger)
+		ctx := context.WithValue(r.Context(), reqContextMethod, r.Method)
+		ctx = context.WithValue(ctx, reqContextPath, r.URL.Path)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

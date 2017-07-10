@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-kit/kit/log"
@@ -11,30 +12,32 @@ import (
 )
 
 // NewJSON returns a new JSON instance.
-func NewJSON(debug bool) *JSON {
+func NewJSON(logger log.Logger, debug bool) *JSON {
+	if logger == nil {
+		logger = log.NewNopLogger()
+	}
 	return &JSON{
-		debug: debug,
+		logger: logger,
+		debug:  debug,
 	}
 }
 
 // JSON returns a new JSON encoder that logs errors.
 // If debug is set, it sets the stacktrace into the HTTP body responses.
 type JSON struct {
-	debug bool
+	logger log.Logger
+	debug  bool
 }
 
 // RenderError renders a HTTPError and logs it if it's a 500.
 func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError HTTPError, e error) {
+	if e == nil {
+		e = errors.New("null")
+	}
 	function, location := toolbox.GetStack(e)
 
 	if j.debug || (httpError.Status >= 500 && httpError.Status < 600) {
-		if logger, err := toolbox.GetLogger(ctx); err == nil {
-			logger = log.With(logger, "status", httpError.Status)
-			if location != "" {
-				logger = log.With(logger, "location", location)
-			}
-			logger.Log("err", e)
-		}
+		toolbox.LoggerWithRequestContext(ctx, j.logger).Log("status", httpError.Status, "err", e)
 	}
 
 	if j.debug {
