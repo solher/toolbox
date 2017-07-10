@@ -2,6 +2,7 @@ package toolbox
 
 import (
 	"context"
+	"errors"
 	"net/http"
 )
 
@@ -11,6 +12,19 @@ const (
 	reqContextMethod key = "toolbox_req_context_method"
 	reqContextPath   key = "toolbox_req_context_path"
 )
+
+// GetRequestContext returns a logger from a context.
+func GetRequestContext(ctx context.Context) (method, path string, err error) {
+	method, ok := ctx.Value(reqContextMethod).(string)
+	if !ok {
+		return "", "", errors.New("request method not found")
+	}
+	path, ok = ctx.Value(reqContextPath).(string)
+	if !ok {
+		return "", "", errors.New("request path not found")
+	}
+	return method, path, nil
+}
 
 type requestContext struct{}
 

@@ -44,14 +44,10 @@ type reqContextLogger struct {
 }
 
 func (l *reqContextLogger) Log(keyvals ...interface{}) error {
-	prefix := []interface{}{}
-	if method, ok := l.ctx.Value(reqContextMethod).(string); ok {
-		prefix = append(prefix, "method", method)
+	if method, path, err := GetRequestContext(l.ctx); err == nil {
+		keyvals = append([]interface{}{"method", method, "path", path}, keyvals...)
 	}
-	if path, ok := l.ctx.Value(reqContextPath).(string); ok {
-		prefix = append(prefix, "path", path)
-	}
-	return l.next.Log(append(prefix, keyvals...)...)
+	return l.next.Log(keyvals...)
 }
 
 // LoggerWithKeyValues wraps next and adds key values to log entries when available.
