@@ -117,7 +117,7 @@ func (w *postgresQueue) GetQueue(ctx context.Context, fromID uint64, limit int) 
 		return nil, errors.WithStack(err)
 	}
 
-	stmt, err := w.db.PrepareNamedContext(ctx, query.String())
+	stmt, err := w.db.PrepareNamed(query.String())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

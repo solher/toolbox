@@ -115,43 +115,58 @@ func (n *NullUint64) Scan(value interface{}) error {
 	return nil
 }
 
-// NullTime is a time that is NULL when set to its zero.
-type NullTime time.Time
+// NullTimestamp is a time that is NULL when set to its zero.
+type NullTimestamp struct {
+	time.Time
+}
 
 // Value implements the driver.Valuer interface.
-func (n NullTime) Value() (driver.Value, error) {
-	if time.Time(n).IsZero() {
+func (n NullTimestamp) Value() (driver.Value, error) {
+	if n.IsZero() {
 		return nil, nil
 	}
-	return time.Time(n), nil
+	return n, nil
 }
 
 // Scan implements the sql.Scanner interface.
-func (n *NullTime) Scan(value interface{}) error {
+func (n *NullTimestamp) Scan(value interface{}) error {
 	switch value := value.(type) {
 	case nil:
-		*n = NullTime(time.Time{})
+		*n = NullTimestamp{Time: time.Time{}}
 	case time.Time:
-		*n = NullTime(value)
+		*n = NullTimestamp{Time: value}
 	default:
-		return fmt.Errorf("Incompatible type for NullTime")
+		return fmt.Errorf("Incompatible type for NullTimestamp")
 	}
 	return nil
 }
 
-// IsZero is there to facilitate usage with Go templates.
-func (n NullTime) IsZero() bool {
-	return time.Time(n).IsZero()
+// NullTime is a string formatted as a Postgres time without timestamp that is NULL when set to its zero.
+type NullTime string
+
+const timeFormat = "15:04:05"
+
+// Value implements the driver.Valuer interface.
+func (n NullTime) Value() (driver.Value, error) {
+	if n == "" {
+		return nil, nil
+	}
+	return string(n), nil
 }
 
-// MarshalJSON implements the json.Marshaler interface.
-func (n NullTime) MarshalJSON() ([]byte, error) {
-	return time.Time(n).MarshalJSON()
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface.
-func (n *NullTime) UnmarshalJSON(data []byte) error {
-	return (*time.Time)(n).UnmarshalJSON(data)
+// Scan implements the sql.Scanner interface.
+func (n *NullTime) Scan(value interface{}) error {
+	switch t := value.(type) {
+	case nil:
+		*n = ""
+	case []uint8:
+		*n = NullTime(t)
+	case time.Time:
+		*n = NullTime(t.Format(timeFormat))
+	default:
+		return errors.New("Incompatible type for NullTime")
+	}
+	return nil
 }
 
 // NullDate is a string formatted as a Postgres date that is NULL when set to its zero.
@@ -179,7 +194,6 @@ func (n *NullDate) Scan(value interface{}) error {
 	default:
 		return errors.New("Incompatible type for NullDate")
 	}
-
 	return nil
 }
 
@@ -218,6 +232,5 @@ func (n *NullMoney) Scan(value interface{}) error {
 	default:
 		return errors.New("Incompatible type for NullMoney")
 	}
-
 	return nil
 }
