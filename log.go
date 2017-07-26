@@ -65,7 +65,7 @@ func (l *keyvalsLogger) Log(keyvals ...interface{}) error {
 	for i := 0; i < len(keyvals); i += 2 {
 		if keyvals[i] == "err" {
 			if err, ok := keyvals[i+1].(error); ok {
-				if newKeyvals, ok := HasErrKeyValues(err); ok {
+				if newKeyvals, ok := HasKeyValues(err); ok {
 					keyvals = append(keyvals, newKeyvals...)
 				}
 			}

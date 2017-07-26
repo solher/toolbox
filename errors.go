@@ -1,58 +1,86 @@
 package toolbox
 
-// HasErrKeyValues returns embedded key values from the error.
-func HasErrKeyValues(err error) (keyvals []interface{}, ok bool) {
-	errKeyvals, ok := err.(errKeyValues)
-	if !ok {
-		return nil, false
+type causer interface {
+	Cause() error
+}
+
+type causerBehavior struct {
+	cause error
+}
+
+func (e *causerBehavior) Cause() error { return e.cause }
+
+func findBehavior(err error, found func(err error) bool) error {
+	for err != nil {
+		if !found(err) {
+			if cause, ok := err.(causer); ok {
+				err = cause.Cause()
+				continue
+			} else {
+				break
+			}
+		}
+		return err
 	}
-	return errKeyvals.ErrKeyValues(), true
+	return nil
 }
 
-type errKeyValues interface {
-	error
-	ErrKeyValues() []interface{}
+// HasKeyValues returns embedded key values from the error.
+func HasKeyValues(err error) (keyvals []interface{}, ok bool) {
+	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(keyValuer); return ok }); foundErr != nil {
+		return foundErr.(keyValuer).KeyValues(), true
+	}
+	return nil, false
 }
 
-type errKeyValuesBehavior struct {
+type keyValuer interface {
+	KeyValues() []interface{}
+}
+
+type keyValuerBehavior struct {
 	keyvals []interface{}
 }
 
-func (err errKeyValuesBehavior) ErrKeyValues() []interface{} { return err.keyvals }
+func (err *keyValuerBehavior) KeyValues() []interface{} { return err.keyvals }
 
-// WithErrKeyValues wraps an error with some key values.
-func WithErrKeyValues(err error, keyvals ...interface{}) error {
+// WithKeyValues wraps an error with some key values.
+func WithKeyValues(err error, keyvals ...interface{}) error {
 	return struct {
 		error
-		errKeyValuesBehavior
+		*causerBehavior
+		*keyValuerBehavior
 	}{
 		err,
-		errKeyValuesBehavior{keyvals: keyvals},
+		&causerBehavior{cause: err},
+		&keyValuerBehavior{keyvals: keyvals},
 	}
 }
 
 // IsErrNotFound indicates if some requested resource was not found.
 func IsErrNotFound(err error) bool {
-	_, ok := err.(errNotFound)
-	return ok
+	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(errNotFound); return ok }); foundErr != nil {
+		return true
+	}
+	return false
 }
 
 type errNotFound interface {
-	error
 	IsErrNotFound()
 }
 
 type errNotFoundBehavior struct{}
 
-func (err errNotFoundBehavior) IsErrNotFound() {}
+func (err *errNotFoundBehavior) IsErrNotFound() {}
 
 // WithErrNotFound wraps an error with a behavior indicating that a requested resource was not found.
 func WithErrNotFound(err error) error {
 	return struct {
 		error
-		errNotFoundBehavior
+		*causerBehavior
+		*errNotFoundBehavior
 	}{
 		err,
-		errNotFoundBehavior{},
+		&causerBehavior{cause: err},
+		&errNotFoundBehavior{},
 	}
 }
