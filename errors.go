@@ -25,14 +25,6 @@ func findBehavior(err error, found func(err error) bool) error {
 	return nil
 }
 
-// HasKeyValues returns embedded key values from the error.
-func HasKeyValues(err error) (keyvals []interface{}, ok bool) {
-	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(keyValuer); return ok }); foundErr != nil {
-		return foundErr.(keyValuer).KeyValues(), true
-	}
-	return nil, false
-}
-
 type keyValuer interface {
 	KeyValues() []interface{}
 }
@@ -56,12 +48,12 @@ func WithKeyValues(err error, keyvals ...interface{}) error {
 	}
 }
 
-// IsErrNotFound indicates if some requested resource was not found.
-func IsErrNotFound(err error) bool {
-	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(errNotFound); return ok }); foundErr != nil {
-		return true
+// HasKeyValues returns embedded key values from the error.
+func HasKeyValues(err error) (keyvals []interface{}, ok bool) {
+	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(keyValuer); return ok }); foundErr != nil {
+		return foundErr.(keyValuer).KeyValues(), true
 	}
-	return false
+	return nil, false
 }
 
 type errNotFound interface {
@@ -83,4 +75,41 @@ func WithErrNotFound(err error) error {
 		&causerBehavior{cause: err},
 		&errNotFoundBehavior{},
 	}
+}
+
+// IsErrNotFound indicates if some requested resource was not found.
+func IsErrNotFound(err error) bool {
+	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(errNotFound); return ok }); foundErr != nil {
+		return true
+	}
+	return false
+}
+
+type errRetriable interface {
+	IsErrRetriable()
+}
+
+type errRetriableBehavior struct{}
+
+func (err *errRetriableBehavior) IsErrRetriable() {}
+
+// WithErrRetriable wraps an error with a behavior indicating that the failed operation should be retried.
+func WithErrRetriable(err error) error {
+	return struct {
+		error
+		*causerBehavior
+		*errRetriableBehavior
+	}{
+		err,
+		&causerBehavior{cause: err},
+		&errRetriableBehavior{},
+	}
+}
+
+// IsErrRetriable indicates if some failed operation should be retried.
+func IsErrRetriable(err error) bool {
+	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(errRetriable); return ok }); foundErr != nil {
+		return true
+	}
+	return false
 }
