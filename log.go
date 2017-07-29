@@ -21,8 +21,8 @@ func (l *stackLogger) Log(keyvals ...interface{}) error {
 	for i := 0; i < len(keyvals); i += 2 {
 		if keyvals[i] == "err" {
 			if err, ok := keyvals[i+1].(error); ok {
-				if function, location := GetStack(err); location != "" {
-					keyvals = append(keyvals, "location", location, "function", function)
+				if location, ok := HasStack(err); ok {
+					keyvals = append(keyvals, "location", location)
 				}
 			}
 		}

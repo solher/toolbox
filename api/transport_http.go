@@ -17,8 +17,6 @@ type DebugHTTPError struct {
 	HTTPError
 	// The err message.
 	Err string `json:"err"`
-	// The function that throwed the error.
-	Function string `json:"function,omitempty"`
 	// The location where the error was thrown.
 	Location string `json:"location,omitempty"`
 }

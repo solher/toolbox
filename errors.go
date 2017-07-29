@@ -1,5 +1,12 @@
 package toolbox
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/pkg/errors"
+)
+
 type causer interface {
 	Cause() error
 }
@@ -23,6 +30,26 @@ func findBehavior(err error, found func(err error) bool) error {
 		return err
 	}
 	return nil
+}
+
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
+// HasStack returns where the error was thrown if possible.
+func HasStack(err error) (location string, ok bool) {
+	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(stackTracer); return ok }); foundErr != nil {
+		stackTrace := foundErr.(stackTracer).StackTrace()
+		if len(stackTrace) > 0 {
+			if stack := strings.SplitN(fmt.Sprintf("%+v", stackTrace[0]), "\n\t", 2); len(stack) == 2 {
+				if dir := strings.SplitN(stack[0], ".(", 2); len(dir) == 2 {
+					location = fmt.Sprintf("%s/%v", dir[0], stackTrace[0])
+				}
+			}
+			return location, true
+		}
+	}
+	return location, false
 }
 
 type keyValuer interface {
