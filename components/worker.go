@@ -13,13 +13,19 @@ import (
 type Workable interface {
 	Name() string
 	Work(ctx context.Context, l log.Logger)
+	Shutdown(ctx context.Context, l log.Logger) error
 }
 
 // Worker provides a synchronization api to a workable.
 type Worker interface {
 	Name() string
 	Shutdown(ctx context.Context) error
-	Process(ctx context.Context) error
+	Start(ctx context.Context) error
+}
+
+type shutdownCallback struct {
+	ctx      context.Context
+	callback chan error
 }
 
 // worker allows to convert an endpoint to a worker listening on an event channel.
@@ -32,7 +38,7 @@ type worker struct {
 	l        log.Logger
 	workable Workable
 
-	shutdownCh chan chan error
+	shutdownCh chan shutdownCallback
 }
 
 // NewWorker returns a new Worker.
@@ -57,7 +63,10 @@ func (w *worker) Shutdown(ctx context.Context) error {
 	w.cancelWorkCtx = nil
 
 	callback := make(chan error)
-	w.shutdownCh <- callback
+	w.shutdownCh <- shutdownCallback{
+		ctx:      ctx,
+		callback: callback,
+	}
 	select {
 	case err := <-callback:
 		return err
@@ -66,14 +75,14 @@ func (w *worker) Shutdown(ctx context.Context) error {
 	}
 }
 
-// Process launches the worker processing on the input channel.
-func (w *worker) Process(ctx context.Context) error {
+// Start launches the worker on the input channel.
+func (w *worker) Start(ctx context.Context) error {
 	w.mutex.Lock()
 	if w.cancelWorkCtx != nil {
 		w.mutex.Unlock()
 		return errors.New("worker is already processing")
 	}
-	w.shutdownCh = make(chan chan error)
+	w.shutdownCh = make(chan shutdownCallback)
 	workCtx, cancelWork := context.WithCancel(ctx)
 	w.cancelWorkCtx = cancelWork
 	w.mutex.Unlock()
@@ -82,9 +91,9 @@ func (w *worker) Process(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			w.Shutdown(ctx)
-		case callback := <-w.shutdownCh:
+		case shutdown := <-w.shutdownCh:
 			close(w.shutdownCh)
-			callback <- nil
+			shutdown.callback <- w.workable.Shutdown(shutdown.ctx, w.l)
 			return nil
 		default:
 			w.workable.Work(workCtx, w.l)

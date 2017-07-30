@@ -77,6 +77,7 @@ func (w *postgresQueue) Work(ctx context.Context, l log.Logger) {
 		}
 	case task := <-w.inCh:
 		if task.Err != nil && task.Retries < 5 {
+			// TODO: Put it in a transaction.
 			if err := w.DeleteFromQueue(ctx, task.ID); err != nil {
 				l.Log("err", err)
 				return
@@ -97,6 +98,8 @@ func (w *postgresQueue) Work(ctx context.Context, l log.Logger) {
 		return
 	}
 }
+
+func (w *postgresQueue) Shutdown(ctx context.Context, l log.Logger) error { return nil }
 
 func (w *postgresQueue) GetQueue(ctx context.Context, fromID uint64, limit int) (tasks []Task, err error) {
 	if limit == 0 {

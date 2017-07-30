@@ -125,7 +125,7 @@ func (n NullTimestamp) Value() (driver.Value, error) {
 	if n.IsZero() {
 		return nil, nil
 	}
-	return n, nil
+	return n.Time, nil
 }
 
 // Scan implements the sql.Scanner interface.
