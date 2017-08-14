@@ -109,6 +109,9 @@ func ScanJSON(source, dest interface{}) (err error) {
 
 // ValueJSON allows easy implementation of the sql.Scanner interface.
 func ValueJSON(source interface{}) (driver.Value, error) {
+	if source == nil {
+		return nil, nil
+	}
 	b, err := json.Marshal(source)
 	return string(b), err
 }
