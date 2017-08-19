@@ -64,6 +64,10 @@ func (w *postgresQueue) Name() string {
 func (w *postgresQueue) Work(ctx context.Context, l log.Logger) {
 	select {
 	case <-w.ticker.C:
+		if err := w.RetryTasks(ctx, w.lastID); err != nil {
+			l.Log("err", err)
+			return
+		}
 		tasks, err := w.GetQueue(ctx, w.lastID, cap(w.outCh)-len(w.outCh))
 		if err != nil {
 			l.Log("err", err)
@@ -77,13 +81,8 @@ func (w *postgresQueue) Work(ctx context.Context, l log.Logger) {
 		}
 	case task := <-w.inCh:
 		if task.Err != nil && task.Retries < 5 {
-			// TODO: Put it in a transaction.
-			if err := w.DeleteFromQueue(ctx, task.ID); err != nil {
-				l.Log("err", err)
-				return
-			}
 			task.Retries++
-			if err := w.InsertTask(ctx, &task); err != nil {
+			if err := w.UpdateTask(ctx, task.ID, task.Retries); err != nil {
 				l.Log("err", err)
 				return
 			}
@@ -132,8 +131,43 @@ func (w *postgresQueue) GetQueue(ctx context.Context, fromID uint64, limit int) 
 	return tasks, nil
 }
 
+func (w *postgresQueue) RetryTasks(ctx context.Context, fromID uint64) error {
+	_, err := w.db.ExecContext(
+		ctx,
+		fmt.Sprintf(`
+		WITH t AS (
+			SELECT id, object_id, retries, payload
+			FROM %s
+			WHERE id < $1
+			AND created_at < NOW() - INTERVAL '10 minutes'
+		), d AS (
+      DELETE FROM %s WHERE id IN (SELECT id FROM t)
+		)
+		INSERT INTO %s (object_id, retries, payload) SELECT t.object_id, t.retries, t.payload FROM t ON CONFLICT (object_id) DO NOTHING 
+		`, w.table, w.table, w.table),
+		fromID,
+	)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func (w *postgresQueue) DeleteFromQueue(ctx context.Context, id uint64) error {
 	if _, err := w.db.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s WHERE id = $1", w.table), id); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func (w *postgresQueue) UpdateTask(ctx context.Context, id, retries uint64) error {
+	_, err := w.db.ExecContext(
+		ctx,
+		fmt.Sprintf("UPDATE %s SET (retries, created_at) VALUES ($2, CURRENT_TIMESTAMP) WHERE id = $1", w.table),
+		id,
+		retries,
+	)
+	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
