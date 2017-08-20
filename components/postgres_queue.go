@@ -162,7 +162,7 @@ func (w *postgresQueue) DeleteFromQueue(ctx context.Context, id uint64) error {
 func (w *postgresQueue) UpdateTask(ctx context.Context, id, retries uint64) error {
 	_, err := w.db.ExecContext(
 		ctx,
-		fmt.Sprintf("UPDATE %s SET retries = $1, created_at = CURRENT_TIMESTAMP) WHERE id = $2", w.table),
+		fmt.Sprintf("UPDATE %s SET retries = $1, created_at = CURRENT_TIMESTAMP WHERE id = $2", w.table),
 		retries,
 		id,
 	)
