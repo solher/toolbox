@@ -14,7 +14,7 @@ import (
 )
 
 var getPostgresQueueTmpl = template.Must(template.New("get_postgres_queue").Parse(`
-		SELECT id, object_id, retries, payload, created_at
+		SELECT id, object_id, retries, created_at
 		FROM {{.Table}}
 		WHERE TRUE
 		{{if .FromID -}}
@@ -26,11 +26,10 @@ var getPostgresQueueTmpl = template.Must(template.New("get_postgres_queue").Pars
 
 // Task is a standardised queued task.
 type Task struct {
-	ID        uint64         `json:"id"        db:"id"`
-	ObjectID  uint64         `json:"objectId"  db:"object_id"`
-	Retries   uint64         `json:"retries"   db:"retries"`
-	Payload   types.JSONText `json:"payload"   db:"payload"`
-	CreatedAt time.Time      `json:"createdAt" db:"created_at"`
+	ID        uint64    `json:"id"        db:"id"`
+	ObjectID  uint64    `json:"objectId"  db:"object_id"`
+	Retries   uint64    `json:"retries"   db:"retries"`
+	CreatedAt time.Time `json:"createdAt" db:"created_at"`
 	Err       error
 }
 
@@ -136,14 +135,14 @@ func (w *postgresQueue) RetryTasks(ctx context.Context, fromID uint64) error {
 		ctx,
 		fmt.Sprintf(`
 		WITH t AS (
-			SELECT id, object_id, retries, payload
+			SELECT id, object_id, retries
 			FROM %s
 			WHERE id < $1
 			AND created_at < NOW() - INTERVAL '10 minutes'
 		), d AS (
       DELETE FROM %s WHERE id IN (SELECT id FROM t)
 		)
-		INSERT INTO %s (object_id, retries, payload) SELECT t.object_id, t.retries, t.payload FROM t ON CONFLICT (object_id) DO NOTHING 
+		INSERT INTO %s (object_id, retries) SELECT t.object_id, t.retries FROM t ON CONFLICT (object_id) DO NOTHING 
 		`, w.table, w.table, w.table),
 		fromID,
 	)
@@ -176,10 +175,9 @@ func (w *postgresQueue) UpdateTask(ctx context.Context, id, retries uint64) erro
 func (w *postgresQueue) InsertTask(ctx context.Context, task *Task) error {
 	_, err := w.db.ExecContext(
 		ctx,
-		fmt.Sprintf("INSERT INTO %s (object_id, retries, payload) VALUES ($1, $2, $3) ON CONFLICT (object_id) DO NOTHING", w.table),
+		fmt.Sprintf("INSERT INTO %s (object_id, retries) VALUES ($1, $2) ON CONFLICT (object_id) DO NOTHING", w.table),
 		task.ObjectID,
 		task.Retries,
-		task.Payload,
 	)
 	if err != nil {
 		return errors.WithStack(err)
