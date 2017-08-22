@@ -33,6 +33,16 @@ type Task struct {
 	Err       error
 }
 
+// LoggerWithTask adds task information to a logger.
+func LoggerWithTask(logger log.Logger, task *Task) log.Logger {
+	return log.With(
+		logger,
+		"id", task.ID,
+		"objectId", task.ObjectID,
+		"retries", task.Retries,
+	)
+}
+
 // NewPostgresQueue returns a worker that synchronizes a postgresQueue table formed as a list of pair documentID/timestamp with a channel.
 func NewPostgresQueue(l log.Logger, db *sqlx.DB, table string, syncTick time.Duration, outCh chan<- Task, inCh <-chan Task) Worker {
 	return NewWorker(
