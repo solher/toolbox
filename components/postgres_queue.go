@@ -102,7 +102,6 @@ func (w *postgresQueue) Work(ctx context.Context, l log.Logger) {
 			return
 		}
 	case <-ctx.Done():
-		l.Log("err", ctx.Err())
 		return
 	}
 }

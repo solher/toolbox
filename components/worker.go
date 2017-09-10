@@ -53,6 +53,8 @@ func NewWorker(l log.Logger, workable Workable) Worker {
 
 // Shutdown shuts down synchronously and gracefully the worker processing.
 func (w *worker) Shutdown(ctx context.Context) error {
+	w.l.Log("msg", "shutting down")
+
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 	if w.cancelWorkCtx == nil {
@@ -86,6 +88,8 @@ func (w *worker) Start(ctx context.Context) error {
 	workCtx, cancelWork := context.WithCancel(ctx)
 	w.cancelWorkCtx = cancelWork
 	w.mutex.Unlock()
+
+	w.l.Log("msg", "successfully started")
 
 	for {
 		select {
