@@ -35,6 +35,44 @@ func (n *NullString) Scan(value interface{}) error {
 	return nil
 }
 
+// NullFloat64 is a float64 that is NULL when set to its zero.
+type NullFloat64 float64
+
+// Value implements the driver.Valuer interface.
+func (n NullFloat64) Value() (driver.Value, error) {
+	if n == 0 {
+		return nil, nil
+	}
+	return float64(n), nil
+}
+
+// Scan implements the sql.Scanner interface.
+func (n *NullFloat64) Scan(value interface{}) error {
+	switch value := value.(type) {
+	case nil:
+		*n = 0
+	case string:
+		tmp, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+		*n = NullFloat64(tmp)
+	case []byte:
+		tmp, err := strconv.ParseFloat(string(value), 64)
+		if err != nil {
+			return err
+		}
+		*n = NullFloat64(tmp)
+	case float64:
+		*n = NullFloat64(value)
+	case float32:
+		*n = NullFloat64(value)
+	default:
+		return fmt.Errorf("Incompatible type for NullFloat64")
+	}
+	return nil
+}
+
 // NullInt64 is an int that is NULL when set to its zero.
 type NullInt64 int64
 
@@ -52,13 +90,13 @@ func (n *NullInt64) Scan(value interface{}) error {
 	case nil:
 		*n = 0
 	case string:
-		tmp, err := strconv.ParseInt(value, 10, 32)
+		tmp, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return err
 		}
 		*n = NullInt64(tmp)
 	case []byte:
-		tmp, err := strconv.ParseInt(string(value), 10, 32)
+		tmp, err := strconv.ParseInt(string(value), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -92,13 +130,13 @@ func (n *NullUint64) Scan(value interface{}) error {
 	case nil:
 		*n = 0
 	case string:
-		tmp, err := strconv.ParseUint(value, 10, 32)
+		tmp, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
 			return err
 		}
 		*n = NullUint64(tmp)
 	case []byte:
-		tmp, err := strconv.ParseUint(string(value), 10, 32)
+		tmp, err := strconv.ParseUint(string(value), 10, 64)
 		if err != nil {
 			return err
 		}
