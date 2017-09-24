@@ -42,8 +42,8 @@ func HasStack(err error) (location string, ok bool) {
 		stackTrace := foundErr.(stackTracer).StackTrace()
 		if len(stackTrace) > 0 {
 			if stack := strings.SplitN(fmt.Sprintf("%+v", stackTrace[0]), "\n\t", 2); len(stack) == 2 {
-				if dir := strings.SplitN(stack[0], ".(", 2); len(dir) == 2 {
-					location = fmt.Sprintf("%s/%v", dir[0], stackTrace[0])
+				if splitted := strings.Split(stack[0], "."); len(splitted) >= 2 {
+					location = fmt.Sprintf("%s/%v", strings.Join(splitted[:len(splitted)-1], "."), stackTrace[0])
 				}
 			}
 			return location, true
