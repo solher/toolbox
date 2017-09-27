@@ -2,6 +2,7 @@ package toolbox
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -36,18 +37,16 @@ type stackTracer interface {
 	StackTrace() errors.StackTrace
 }
 
+var stackFileRegex = regexp.MustCompile(`([^\(\)]+)\..+`)
+
 // HasStack returns where the error was thrown if possible.
 func HasStack(err error) (location string, ok bool) {
 	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(stackTracer); return ok }); foundErr != nil {
 		stackTrace := foundErr.(stackTracer).StackTrace()
 		if len(stackTrace) > 0 {
 			if stack := strings.SplitN(fmt.Sprintf("%+v", stackTrace[0]), "\n\t", 2); len(stack) == 2 {
-				if splitted := strings.Split(stack[0], "."); len(splitted) >= 2 {
-					idx := 2
-					if len(splitted) == 2 {
-						idx = 1
-					}
-					location = fmt.Sprintf("%s/%v", strings.Join(splitted[:len(splitted)-idx], "."), stackTrace[0])
+				if matches := stackFileRegex.FindStringSubmatch(stack[0]); len(matches) == 2 {
+					location = fmt.Sprintf("%s/%v", matches[1], stackTrace[0])
 				}
 			}
 			return location, true
