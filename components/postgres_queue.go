@@ -131,6 +131,7 @@ func (w *postgresQueue) GetQueue(ctx context.Context, fromID uint64, limit int) 
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	defer stmt.Close()
 
 	if err := stmt.SelectContext(ctx, &tasks, arg); err != nil {
 		return nil, errors.WithStack(err)
