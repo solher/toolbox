@@ -115,6 +115,35 @@ func IsErrNotFound(err error) bool {
 	return false
 }
 
+type errValidation interface {
+	IsErrValidation()
+}
+
+type errValidationBehavior struct{}
+
+func (err *errValidationBehavior) IsErrValidation() {}
+
+// WithErrValidation wraps an error with a behavior indicating that some user parameters were invalid.
+func WithErrValidation(err error) error {
+	return struct {
+		error
+		*causerBehavior
+		*errValidationBehavior
+	}{
+		err,
+		&causerBehavior{cause: err},
+		&errValidationBehavior{},
+	}
+}
+
+// IsErrValidation indicates if some requested resource was not found.
+func IsErrValidation(err error) bool {
+	if foundErr := findBehavior(err, func(err error) bool { _, ok := err.(errValidation); return ok }); foundErr != nil {
+		return true
+	}
+	return false
+}
+
 type errRetriable interface {
 	IsErrRetriable()
 }
