@@ -37,6 +37,7 @@ type QueueRepository interface {
 	GetQueue(ctx context.Context, table string, fromID uint64, limit int) (tasks []Task, err error)
 	RetryTasks(ctx context.Context, table string, fromID uint64) error
 	DeleteFromQueue(ctx context.Context, table string, id uint64) error
+	DeleteFromQueueBulk(ctx context.Context, table string, ids []uint64) error
 	UpdateTask(ctx context.Context, table string, id, retries uint64) error
 	InsertTask(ctx context.Context, table string, task *Task) error
 }
