@@ -111,6 +111,13 @@ func (r *postgresQueueRepo) DeleteFromQueue(ctx context.Context, table string, i
 	return nil
 }
 
+func (r *postgresQueueRepo) DeleteFromQueueBulk(ctx context.Context, table string, ids []uint64) error {
+	if _, err := r.db.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s WHERE id = ANY($1)", table), types.Uint64Array(ids)); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func (r *postgresQueueRepo) UpdateTask(ctx context.Context, table string, id, retries uint64) error {
 	_, err := r.db.ExecContext(
 		ctx,
