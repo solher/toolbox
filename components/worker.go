@@ -30,24 +30,24 @@ type shutdownCallback struct {
 
 // worker allows to convert an endpoint to a worker listening on an event channel.
 type worker struct {
-	// We also use cancelWorkCtx as a semaphore to know when the worker is processing.
-	cancelWorkCtx context.CancelFunc
-	mutex         sync.Mutex
+	mutex   sync.Mutex
+	running bool
 
 	name     string
 	l        log.Logger
 	workable Workable
 
-	shutdownCh chan shutdownCallback
+	shutdownCh, loopShutdownCh chan shutdownCallback
 }
 
 // NewWorker returns a new Worker.
 func NewWorker(l log.Logger, workable Workable) Worker {
 	return &worker{
-		cancelWorkCtx: nil,
-		name:          workable.Name(),
-		l:             log.With(l, "component", workable.Name()),
-		workable:      workable,
+		name:           workable.Name(),
+		l:              log.With(l, "component", workable.Name()),
+		workable:       workable,
+		shutdownCh:     make(chan shutdownCallback, 1),
+		loopShutdownCh: make(chan shutdownCallback, 1),
 	}
 }
 
@@ -57,18 +57,15 @@ func (w *worker) Shutdown(ctx context.Context) error {
 
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
-	if w.cancelWorkCtx == nil {
-		return nil
-	}
 
-	w.cancelWorkCtx()
-	w.cancelWorkCtx = nil
+	w.running = false
 
 	callback := make(chan error)
 	w.shutdownCh <- shutdownCallback{
 		ctx:      ctx,
 		callback: callback,
 	}
+
 	select {
 	case err := <-callback:
 		return err
@@ -80,28 +77,36 @@ func (w *worker) Shutdown(ctx context.Context) error {
 // Start launches the worker on the input channel.
 func (w *worker) Start(ctx context.Context) error {
 	w.mutex.Lock()
-	if w.cancelWorkCtx != nil {
+	if w.running {
 		w.mutex.Unlock()
 		return errors.New("worker is already processing")
 	}
-	w.shutdownCh = make(chan shutdownCallback)
-	workCtx, cancelWork := context.WithCancel(ctx)
-	w.cancelWorkCtx = cancelWork
+	w.running = true
 	w.mutex.Unlock()
 
 	w.l.Log("msg", "successfully started")
 
-	for {
-		select {
-		case <-ctx.Done():
-			w.Shutdown(ctx)
-		case shutdown := <-w.shutdownCh:
-			close(w.shutdownCh)
-			shutdown.callback <- w.workable.Shutdown(shutdown.ctx, w.l)
-			return nil
-		default:
-			w.workable.Work(workCtx, w.l)
+	workCtx, cancelWork := context.WithCancel(ctx)
+	defer cancelWork()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				w.Shutdown(ctx)
+			case shutdown := <-w.loopShutdownCh:
+				shutdown.callback <- w.workable.Shutdown(shutdown.ctx, w.l)
+				return
+			default:
+				w.workable.Work(workCtx, w.l)
+			}
 		}
+	}()
+
+	select {
+	case shutdown := <-w.shutdownCh:
+		w.loopShutdownCh <- shutdown
+		return nil
 	}
 }
 
