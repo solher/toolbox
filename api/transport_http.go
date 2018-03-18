@@ -71,4 +71,11 @@ var (
 		ErrorCode:   "FORBIDDEN",
 		Params:      make(map[string]interface{}),
 	}
+	// HTTPNotFOund indicates that the requested resource was not found.
+	HTTPNotFOund = HTTPError{
+		Status:      404,
+		Description: "The specified resource was not found.",
+		ErrorCode:   "NOT_FOUND",
+		Params:      make(map[string]interface{}),
+	}
 )
