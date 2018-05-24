@@ -25,7 +25,7 @@ import (
 // implements `Unmarshal`, which unmarshals the json within to an interface{}
 type JSONText json.RawMessage
 
-var emptyJSON = JSONText("{}")
+var emptyJSON = JSONText("null")
 
 // MarshalJSON returns the *j as the JSON encoding of j.
 func (j JSONText) MarshalJSON() ([]byte, error) {
