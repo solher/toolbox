@@ -47,7 +47,10 @@ func (x *XML) RenderError(ctx context.Context, w http.ResponseWriter, httpError 
 			Location:  location,
 		})
 	} else {
-		x.renderXML(w, httpError.Status, &httpError)
+		x.renderXML(w, httpError.Status, &DebugHTTPError{
+			HTTPError: httpError,
+			Err:       e.Error(),
+		})
 	}
 }
 

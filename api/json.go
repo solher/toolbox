@@ -47,7 +47,10 @@ func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError
 			Location:  location,
 		})
 	} else {
-		j.renderJSON(w, httpError.Status, &httpError)
+		j.renderJSON(w, httpError.Status, &DebugHTTPError{
+			HTTPError: httpError,
+			Err:       e.Error(),
+		})
 	}
 }
 
