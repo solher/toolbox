@@ -63,5 +63,6 @@ func (x *XML) Render(ctx context.Context, w http.ResponseWriter, status int, obj
 func (x *XML) renderXML(w http.ResponseWriter, status int, object interface{}) {
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.WriteHeader(status)
+	w.Write([]byte(xml.Header))
 	xml.NewEncoder(w).Encode(object)
 }
