@@ -12,6 +12,7 @@ import (
 // Workable defines objects usable by the worker.
 type Workable interface {
 	Name() string
+	Start(ctx context.Context, l log.Logger) error
 	Work(ctx context.Context, l log.Logger)
 	Shutdown(ctx context.Context, l log.Logger) error
 }
@@ -83,6 +84,10 @@ func (w *worker) Start(ctx context.Context) error {
 	}
 	w.running = true
 	w.mutex.Unlock()
+
+	if err := w.workable.Start(ctx, w.l); err != nil {
+		return err
+	}
 
 	w.l.Log("msg", "successfully started")
 

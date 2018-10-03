@@ -44,6 +44,8 @@ func (w *queueWorker) Name() string {
 	return w.table
 }
 
+func (w *queueWorker) Start(ctx context.Context, l log.Logger) error { return nil }
+
 func (w *queueWorker) Work(ctx context.Context, l log.Logger) {
 	select {
 	case <-w.ticker.C:
