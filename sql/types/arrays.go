@@ -69,10 +69,6 @@ func (a *BoolArray) scanBytes(src []byte) error {
 
 // Value implements the driver.Valuer interface.
 func (a BoolArray) Value() (driver.Value, error) {
-	if a == nil {
-		return nil, nil
-	}
-
 	if n := len(a); n > 0 {
 		// There will be exactly two curly brackets, N bytes of values,
 		// and N-1 bytes of delimiters.
@@ -137,10 +133,6 @@ func (a *ByteaArray) scanBytes(src []byte) error {
 // Value implements the driver.Valuer interface. It uses the "hex" format which
 // is only supported on PostgreSQL 9.0 or newer.
 func (a ByteaArray) Value() (driver.Value, error) {
-	if a == nil {
-		return nil, nil
-	}
-
 	if n := len(a); n > 0 {
 		// There will be at least two curly brackets, 2*N bytes of quotes,
 		// 3*N bytes of hex formatting, and N-1 bytes of delimiters.
@@ -207,10 +199,6 @@ func (a *Float64Array) scanBytes(src []byte) error {
 
 // Value implements the driver.Valuer interface.
 func (a Float64Array) Value() (driver.Value, error) {
-	if a == nil {
-		return nil, nil
-	}
-
 	if n := len(a); n > 0 {
 		// There will be at least two curly brackets, N bytes of values,
 		// and N-1 bytes of delimiters.
@@ -268,10 +256,6 @@ func (a *Int64Array) scanBytes(src []byte) error {
 
 // Value implements the driver.Valuer interface.
 func (a Int64Array) Value() (driver.Value, error) {
-	if a == nil {
-		return nil, nil
-	}
-
 	if n := len(a); n > 0 {
 		// There will be at least two curly brackets, N bytes of values,
 		// and N-1 bytes of delimiters.
@@ -329,10 +313,6 @@ func (a *Uint64Array) scanBytes(src []byte) error {
 
 // Value implements the driver.Valuer interface.
 func (a Uint64Array) Value() (driver.Value, error) {
-	if a == nil {
-		return nil, nil
-	}
-
 	if n := len(a); n > 0 {
 		// There will be at least two curly brackets, N bytes of values,
 		// and N-1 bytes of delimiters.
@@ -390,10 +370,6 @@ func (a *StringArray) scanBytes(src []byte) error {
 
 // Value implements the driver.Valuer interface.
 func (a StringArray) Value() (driver.Value, error) {
-	if a == nil {
-		return nil, nil
-	}
-
 	if n := len(a); n > 0 {
 		// There will be at least two curly brackets, 2*N bytes of quotes,
 		// and N-1 bytes of delimiters.
