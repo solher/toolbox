@@ -34,13 +34,13 @@ func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError
 	if e == nil {
 		e = errors.New("null")
 	}
-	location, _ := toolbox.HasStack(e)
 
 	if j.debug || (httpError.Status >= 500 && httpError.Status < 600) {
 		toolbox.LoggerWithRequestContext(ctx, j.logger).Log("status", httpError.Status, "err", e)
 	}
 
 	if j.debug {
+		location, _ := toolbox.HasStack(e)
 		j.renderJSON(w, httpError.Status, &DebugHTTPError{
 			HTTPError: httpError,
 			Err:       e.Error(),
