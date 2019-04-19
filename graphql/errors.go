@@ -40,8 +40,11 @@ var (
 	}
 )
 
+// ErrorGenerator generates a GraphQL error.
+type ErrorGenerator func(ctx context.Context, gqlErr gqlerror.Error, e error) error
+
 // NewErrorGenerator returns an GraphQL error generator.
-func NewErrorGenerator(logger log.Logger, debug bool) func(ctx context.Context, gqlErr gqlerror.Error, e error) error {
+func NewErrorGenerator(logger log.Logger, debug bool) ErrorGenerator {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
