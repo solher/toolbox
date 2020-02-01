@@ -38,6 +38,13 @@ var (
 			"errorCode": "NOT_FOUND",
 		},
 	}
+	// ErrUnauthorized indicates that the user does not have a valid associated session.
+	ErrUnauthorized = gqlerror.Error{
+		Message: "Authorization Required.",
+		Extensions: map[string]interface{}{
+			"errorCode": "AUTHORIZATION_REQUIRED",
+		},
+	}
 )
 
 // ErrorGenerator generates a GraphQL error.
