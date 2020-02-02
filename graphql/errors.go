@@ -45,6 +45,13 @@ var (
 			"errorCode": "AUTHORIZATION_REQUIRED",
 		},
 	}
+	// ErrForbidden indicates that the user has a valid session but he is missing some permissions.
+	ErrForbidden = gqlerror.Error{
+		Message: "The specified resource was not found or you don't have sufficient permissions.",
+		Extensions: map[string]interface{}{
+			"errorCode": "FORBIDDEN",
+		},
+	}
 )
 
 // ErrorGenerator generates a GraphQL error.
