@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/solher/toolbox"
-	"github.com/vektah/gqlparser/gqlerror"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 var (
