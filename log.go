@@ -3,7 +3,7 @@ package toolbox
 import (
 	"context"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 )
 
 // LoggerWithStack wraps next and adds stacktrace to log entries when available.

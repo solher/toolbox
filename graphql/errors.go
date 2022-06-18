@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/solher/toolbox"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
