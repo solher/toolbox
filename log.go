@@ -3,7 +3,9 @@ package toolbox
 import (
 	"context"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/log"
+	"github.com/pkg/errors"
 )
 
 // LoggerWithStack wraps next and adds stacktrace to log entries when available.
@@ -68,6 +70,32 @@ func (l *keyvalsLogger) Log(keyvals ...interface{}) error {
 				if newKeyvals, ok := HasKeyValues(err); ok {
 					keyvals = append(keyvals, newKeyvals...)
 				}
+			}
+		}
+	}
+	return l.next.Log(keyvals...)
+}
+
+// LoggerWithSentry exports errors to sentry.
+func LoggerWithSentry(next log.Logger) log.Logger {
+	return &sentryLogger{
+		next: next,
+	}
+}
+
+type sentryLogger struct {
+	next log.Logger
+}
+
+func (l *sentryLogger) Log(keyvals ...interface{}) error {
+	for i := 0; i < len(keyvals); i += 2 {
+		switch keyvals[i] {
+		case "err", "error":
+			switch err := keyvals[i+1].(type) {
+			case error:
+				sentry.CaptureException(err)
+			case string:
+				sentry.CaptureException(errors.New(err))
 			}
 		}
 	}
