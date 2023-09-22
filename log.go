@@ -77,13 +77,15 @@ func (l *keyvalsLogger) Log(keyvals ...interface{}) error {
 }
 
 // LoggerWithSentry exports errors to sentry.
-func LoggerWithSentry(next log.Logger) log.Logger {
+func LoggerWithSentry(ctx context.Context, next log.Logger) log.Logger {
 	return &sentryLogger{
+		ctx:  ctx,
 		next: next,
 	}
 }
 
 type sentryLogger struct {
+	ctx  context.Context
 	next log.Logger
 }
 
@@ -91,11 +93,19 @@ func (l *sentryLogger) Log(keyvals ...interface{}) error {
 	for i := 0; i < len(keyvals); i += 2 {
 		switch keyvals[i] {
 		case "err", "error":
+			var e error
 			switch err := keyvals[i+1].(type) {
 			case error:
-				sentry.CaptureException(err)
+				e = err
 			case string:
-				sentry.CaptureException(errors.New(err))
+				e = errors.New(err)
+			}
+			if e != nil {
+				if hub := sentry.GetHubFromContext(l.ctx); hub != nil {
+					hub.CaptureException(e)
+				} else {
+					sentry.CaptureException(e)
+				}
 			}
 		}
 	}

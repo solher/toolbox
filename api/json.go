@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/kit/log"
 
 	"github.com/solher/toolbox"
@@ -38,10 +37,9 @@ func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError
 
 	// We log errors and we export them to Sentry.
 	if j.debug || (httpError.Status >= 500 && httpError.Status < 600) {
-		toolbox.LoggerWithRequestContext(ctx, j.logger).Log("status", httpError.Status, "err", e)
-		if hub := sentry.GetHubFromContext(ctx); hub != nil {
-			hub.CaptureException(e)
-		}
+		logger := toolbox.LoggerWithRequestContext(ctx, j.logger)
+		logger = toolbox.LoggerWithSentry(ctx, logger)
+		logger.Log("status", httpError.Status, "err", e)
 	}
 
 	if j.debug {
