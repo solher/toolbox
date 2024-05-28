@@ -5,14 +5,32 @@ import (
 	"github.com/solher/toolbox/sql/types"
 )
 
+// MarshalString marshals a string for GqlGen.
+func MarshalString(t string) graphql.Marshaler {
+	return graphql.MarshalString(t)
+}
+
+// UnmarshalString unmarshals a string for GqlGen.
+func UnmarshalString(v interface{}) (string, error) {
+	s, err := graphql.UnmarshalString(v)
+	if err != nil {
+		return "", err
+	}
+	// GqlGen sends "null" for null strings. It's weird.
+	if s == "null" {
+		return "", nil
+	}
+	return s, nil
+}
+
 // MarshalNullString marshals a types.NullString for GqlGen.
 func MarshalNullString(t types.NullString) graphql.Marshaler {
-	return graphql.MarshalString(string(t))
+	return MarshalString(string(t))
 }
 
 // UnmarshalNullString unmarshals a types.NullString for GqlGen.
 func UnmarshalNullString(v interface{}) (types.NullString, error) {
-	s, err := graphql.UnmarshalString(v)
+	s, err := UnmarshalString(v)
 	if err != nil {
 		return "", err
 	}
