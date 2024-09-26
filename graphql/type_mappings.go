@@ -64,3 +64,17 @@ func UnmarshalNullTimestamp(v interface{}) (types.NullTimestamp, error) {
 	}
 	return types.NullTimestamp{Time: t}, nil
 }
+
+// MarshalNullDate marshals a types.NullDate for GqlGen.
+func MarshalNullDate(t types.NullDate) graphql.Marshaler {
+	return MarshalString(string(t))
+}
+
+// UnmarshalNullDate unmarshals a types.NullDate for GqlGen.
+func UnmarshalNullDate(v interface{}) (types.NullDate, error) {
+	s, err := UnmarshalString(v)
+	if err != nil {
+		return types.NullDate(""), err
+	}
+	return types.NullDate(s), nil
+}
