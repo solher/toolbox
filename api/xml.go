@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 
 	"github.com/solher/toolbox"
 )
@@ -37,7 +37,7 @@ func (x *XML) RenderError(ctx context.Context, w http.ResponseWriter, httpError 
 	location, _ := toolbox.HasStack(e)
 
 	if x.debug || (httpError.Status >= 500 && httpError.Status < 600) {
-		toolbox.LoggerWithRequestContext(ctx, x.logger).Log("status", httpError.Status, "err", e)
+		x.logger.Log("status", httpError.Status, "err", e)
 	}
 
 	if x.debug {
