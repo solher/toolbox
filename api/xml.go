@@ -34,13 +34,16 @@ func (x *XML) RenderError(ctx context.Context, w http.ResponseWriter, httpError 
 	if e == nil {
 		e = errors.New("null")
 	}
-	location, _ := toolbox.HasStack(e)
 
+	// We log errors and we export them to Sentry.
 	if x.debug || (httpError.Status >= 500 && httpError.Status < 600) {
-		x.logger.Log("status", httpError.Status, "err", e)
+		logger := toolbox.LoggerWithRequestContext(ctx, x.logger)
+		logger = toolbox.LoggerWithSentry(ctx, logger)
+		logger.Log("status", httpError.Status, "err", e)
 	}
 
 	if x.debug {
+		location, _ := toolbox.HasStack(e)
 		x.renderXML(w, httpError.Status, &DebugHTTPError{
 			HTTPError: httpError,
 			Err:       e.Error(),

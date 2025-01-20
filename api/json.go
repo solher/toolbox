@@ -35,8 +35,11 @@ func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError
 		e = errors.New("null")
 	}
 
+	// We log errors and we export them to Sentry.
 	if j.debug || (httpError.Status >= 500 && httpError.Status < 600) {
-		j.logger.Log("status", httpError.Status, "err", e)
+		logger := toolbox.LoggerWithRequestContext(ctx, j.logger)
+		logger = toolbox.LoggerWithSentry(ctx, logger)
+		logger.Log("status", httpError.Status, "err", e)
 	}
 
 	if j.debug {
