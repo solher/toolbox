@@ -1,8 +1,12 @@
 package graphql
 
 import (
+	"errors"
+	"io"
+	"strconv"
+	"time"
+
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/solher/toolbox/sql/types"
 )
 
 // MarshalString marshals a string for GqlGen.
@@ -23,58 +27,37 @@ func UnmarshalString(v interface{}) (string, error) {
 	return s, nil
 }
 
-// MarshalNullString marshals a types.NullString for GqlGen.
-func MarshalNullString(t types.NullString) graphql.Marshaler {
-	return MarshalString(string(t))
-}
-
-// UnmarshalNullString unmarshals a types.NullString for GqlGen.
-func UnmarshalNullString(v interface{}) (types.NullString, error) {
-	s, err := UnmarshalString(v)
-	if err != nil {
-		return "", err
+// MarshalDate serializes the date as a YYYY-MM-DD string.
+func MarshalDate(t time.Time) graphql.Marshaler {
+	if t.IsZero() {
+		return graphql.Null
 	}
-	return types.NullString(s), nil
+	// Normalize to midnight UTC
+	y, m, d := t.UTC().Date()
+	normalized := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	return graphql.WriterFunc(func(w io.Writer) {
+		io.WriteString(w, strconv.Quote(normalized.Format("2006-01-02")))
+	})
 }
 
-// MarshalNullInt64 marshals a types.NullInt64 for GqlGen.
-func MarshalNullInt64(t types.NullInt64) graphql.Marshaler {
-	return graphql.MarshalInt64(int64(t))
-}
-
-// UnmarshalNullInt64 unmarshals a types.NullInt64 for GqlGen.
-func UnmarshalNullInt64(v interface{}) (types.NullInt64, error) {
-	s, err := graphql.UnmarshalInt64(v)
-	if err != nil {
-		return 0, err
+// UnmarshalDate accepts either 'YYYY-MM-DD' or an RFC3339/RFC3339Nano timestamp, and keeps only the date part (midnight UTC).
+func UnmarshalDate(v any) (time.Time, error) {
+	if s, ok := v.(string); ok {
+		// Try strict date first
+		if t, err := time.ParseInLocation("2006-01-02", s, time.UTC); err == nil {
+			y, m, d := t.Date()
+			return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
+		}
+		// Finally try RFC3339
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			y, m, d := t.Date()
+			return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
+		}
+		// Then try RFC3339Nano
+		if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+			y, m, d := t.Date()
+			return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
+		}
 	}
-	return types.NullInt64(s), nil
-}
-
-// MarshalNullTimestamp marshals a types.NullTimestamp for GqlGen.
-func MarshalNullTimestamp(t types.NullTimestamp) graphql.Marshaler {
-	return graphql.MarshalTime(t.Time)
-}
-
-// UnmarshalNullTimestamp unmarshals a types.NullTimestamp for GqlGen.
-func UnmarshalNullTimestamp(v interface{}) (types.NullTimestamp, error) {
-	t, err := graphql.UnmarshalTime(v)
-	if err != nil {
-		return types.NullTimestamp{}, err
-	}
-	return types.NullTimestamp{Time: t}, nil
-}
-
-// MarshalNullDate marshals a types.NullDate for GqlGen.
-func MarshalNullDate(t types.NullDate) graphql.Marshaler {
-	return MarshalString(string(t))
-}
-
-// UnmarshalNullDate unmarshals a types.NullDate for GqlGen.
-func UnmarshalNullDate(v interface{}) (types.NullDate, error) {
-	s, err := UnmarshalString(v)
-	if err != nil {
-		return types.NullDate(""), err
-	}
-	return types.NullDate(s), nil
+	return time.Time{}, errors.New("date must be 'YYYY-MM-DD' or an RFC3339 formatted string")
 }
