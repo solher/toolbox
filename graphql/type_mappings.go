@@ -27,39 +27,33 @@ func UnmarshalString(v any) (string, error) {
 }
 
 // MarshalTime serializes the time as a HH:MM:SS string.
-func MarshalTime(v string) graphql.Marshaler {
-	if v == "" {
-		return graphql.Null
-	}
-	return graphql.MarshalString(v)
+func MarshalTime(v time.Time) graphql.Marshaler {
+	return graphql.MarshalString(v.Format(time.TimeOnly))
 }
 
 // UnmarshalTime accepts a 'HH:MM:SS' formatted string.
-func UnmarshalTime(v any) (string, error) {
+func UnmarshalTime(v any) (time.Time, error) {
 	if s, ok := v.(string); ok {
-		if _, err := time.ParseInLocation(time.TimeOnly, s, time.UTC); err == nil {
-			return s, nil
+		if parsed, err := time.ParseInLocation(time.TimeOnly, s, time.UTC); err == nil {
+			return parsed, nil
 		}
 	}
-	return "", errors.New("time must be 'HH:MM:SS' formatted string")
+	return time.Time{}, errors.New("time must be 'HH:MM:SS' formatted string")
 }
 
 // MarshalDate serializes the date as a YYYY-MM-DD string.
-func MarshalDate(v string) graphql.Marshaler {
-	if v == "" {
-		return graphql.Null
-	}
-	return graphql.MarshalString(v)
+func MarshalDate(v time.Time) graphql.Marshaler {
+	return graphql.MarshalString(v.Format(time.DateOnly))
 }
 
 // UnmarshalDate accepts a 'YYYY-MM-DD' formatted string.
-func UnmarshalDate(v any) (string, error) {
+func UnmarshalDate(v any) (time.Time, error) {
 	if s, ok := v.(string); ok {
-		if _, err := time.ParseInLocation(time.DateOnly, s, time.UTC); err == nil {
-			return s, nil
+		if parsed, err := time.ParseInLocation(time.DateOnly, s, time.UTC); err == nil {
+			return parsed, nil
 		}
 	}
-	return "", errors.New("date must be 'YYYY-MM-DD' formatted string")
+	return time.Time{}, errors.New("date must be 'YYYY-MM-DD' formatted string")
 }
 
 // MarshalTimeZone serializes the time zone as an IANA time zone string.
