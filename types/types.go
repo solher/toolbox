@@ -43,9 +43,6 @@ func (n *Time) UnmarshalJSON(data []byte) error {
 
 // Value implements the driver.Valuer interface.
 func (n Time) Value() (driver.Value, error) {
-	if n.IsZero() {
-		return nil, nil
-	}
 	return n.String(), nil
 }
 
@@ -102,9 +99,6 @@ func (n *Date) UnmarshalJSON(data []byte) error {
 
 // Value implements the driver.Valuer interface.
 func (n Date) Value() (driver.Value, error) {
-	if n.IsZero() {
-		return nil, nil
-	}
 	return n.String(), nil
 }
 
@@ -156,9 +150,6 @@ func (n *TimeZone) UnmarshalJSON(data []byte) error {
 
 // Value implements the driver.Valuer interface.
 func (n TimeZone) Value() (driver.Value, error) {
-	if n.String() == "" {
-		return nil, nil
-	}
 	return n.Location.String(), nil
 }
 
