@@ -91,6 +91,11 @@ func (n *Date) UnmarshalJSON(data []byte) error {
 	}
 	parsed, err := time.Parse(time.DateOnly, t)
 	if err != nil {
+		// Just in case, we also try to parse RFC3339 date
+		if parsed, err := time.Parse(time.RFC3339, t); err == nil {
+			*n = Date{Time: parsed}
+			return nil
+		}
 		return err
 	}
 	*n = Date{Time: parsed}

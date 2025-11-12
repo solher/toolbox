@@ -29,9 +29,6 @@ func UnmarshalString(v any) (string, error) {
 
 // MarshalTime serializes the time as a HH:MM:SS string.
 func MarshalTime(v types.Time) graphql.Marshaler {
-	if v.IsZero() {
-		return graphql.Null
-	}
 	return graphql.MarshalString(v.String())
 }
 
@@ -47,9 +44,6 @@ func UnmarshalTime(v any) (types.Time, error) {
 
 // MarshalDate serializes the date as a YYYY-MM-DD string.
 func MarshalDate(v types.Date) graphql.Marshaler {
-	if v.IsZero() {
-		return graphql.Null
-	}
 	return graphql.MarshalString(v.String())
 }
 
@@ -65,9 +59,6 @@ func UnmarshalDate(v any) (types.Date, error) {
 
 // MarshalTimeZone serializes the time zone as an IANA time zone string.
 func MarshalTimeZone(v types.TimeZone) graphql.Marshaler {
-	if v.String() == "" {
-		return graphql.Null
-	}
 	return graphql.MarshalString(v.String())
 }
 
@@ -83,9 +74,6 @@ func UnmarshalTimeZone(v any) (types.TimeZone, error) {
 
 // MarshalDateTime serializes the datetime as a RFC3339 formatted string.
 func MarshalDateTime(v time.Time) graphql.Marshaler {
-	if v.IsZero() {
-		return graphql.Null
-	}
 	return graphql.MarshalString(v.Format(time.RFC3339))
 }
 
@@ -103,9 +91,6 @@ var countryRegex = regexp.MustCompile("^[A-Z]{2}$")
 
 // MarshalCountry serializes the country as an ISO 3166-1 alpha-2 code.
 func MarshalCountry(v string) graphql.Marshaler {
-	if v == "" {
-		return graphql.Null
-	}
 	return graphql.MarshalString(v)
 }
 
@@ -123,9 +108,6 @@ var languageRegex = regexp.MustCompile("^[a-z]{2}(-[0-9A-Z]+)?$")
 
 // MarshalLanguage serializes the language as an IETF language tag.
 func MarshalLanguage(v string) graphql.Marshaler {
-	if v == "" {
-		return graphql.Null
-	}
 	return graphql.MarshalString(v)
 }
 
