@@ -30,6 +30,11 @@ func (n *Time) UnmarshalJSON(data []byte) error {
 	}
 	parsed, err := time.Parse(time.TimeOnly, t)
 	if err != nil {
+		// Just in case, we also try to parse hh:mm
+		if parsed, err := time.Parse("15:04", t); err == nil {
+			*n = Time{Time: parsed}
+			return nil
+		}
 		return err
 	}
 	*n = Time{Time: parsed}
@@ -45,7 +50,7 @@ func (n Time) Value() (driver.Value, error) {
 }
 
 // Scan implements the sql.Scanner interface.
-func (n *Time) Scan(value interface{}) error {
+func (n *Time) Scan(value any) error {
 	switch t := value.(type) {
 	case nil:
 		*n = Time{Time: time.Time{}}
@@ -104,7 +109,7 @@ func (n Date) Value() (driver.Value, error) {
 }
 
 // Scan implements the sql.Scanner interface.
-func (n *Date) Scan(value interface{}) error {
+func (n *Date) Scan(value any) error {
 	switch t := value.(type) {
 	case nil:
 		*n = Date{Time: time.Time{}}
@@ -158,7 +163,7 @@ func (n TimeZone) Value() (driver.Value, error) {
 }
 
 // Scan implements the sql.Scanner interface.
-func (n *TimeZone) Scan(value interface{}) error {
+func (n *TimeZone) Scan(value any) error {
 	switch t := value.(type) {
 	case nil:
 		*n = TimeZone{Location: *time.UTC}
