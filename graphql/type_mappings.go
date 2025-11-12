@@ -2,20 +2,18 @@ package graphql
 
 import (
 	"errors"
-	"io"
-	"strconv"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 )
 
 // MarshalString marshals a string for GqlGen.
-func MarshalString(t string) graphql.Marshaler {
-	return graphql.MarshalString(t)
+func MarshalString(v string) graphql.Marshaler {
+	return graphql.MarshalString(v)
 }
 
 // UnmarshalString unmarshals a string for GqlGen.
-func UnmarshalString(v interface{}) (string, error) {
+func UnmarshalString(v any) (string, error) {
 	s, err := graphql.UnmarshalString(v)
 	if err != nil {
 		return "", err
@@ -27,37 +25,71 @@ func UnmarshalString(v interface{}) (string, error) {
 	return s, nil
 }
 
-// MarshalDate serializes the date as a YYYY-MM-DD string.
-func MarshalDate(t time.Time) graphql.Marshaler {
-	if t.IsZero() {
+// MarshalTime serializes the time as a HH:MM:SS string.
+func MarshalTime(v string) graphql.Marshaler {
+	if v == "" {
 		return graphql.Null
 	}
-	// Normalize to midnight UTC
-	y, m, d := t.UTC().Date()
-	normalized := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
-	return graphql.WriterFunc(func(w io.Writer) {
-		io.WriteString(w, strconv.Quote(normalized.Format("2006-01-02")))
-	})
+	return graphql.MarshalString(v)
 }
 
-// UnmarshalDate accepts either 'YYYY-MM-DD' or an RFC3339/RFC3339Nano timestamp, and keeps only the date part (midnight UTC).
-func UnmarshalDate(v any) (time.Time, error) {
+// UnmarshalTime accepts a 'HH:MM:SS' formatted string.
+func UnmarshalTime(v any) (string, error) {
 	if s, ok := v.(string); ok {
-		// Try strict date first
-		if t, err := time.ParseInLocation("2006-01-02", s, time.UTC); err == nil {
-			y, m, d := t.Date()
-			return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
-		}
-		// Finally try RFC3339
-		if t, err := time.Parse(time.RFC3339, s); err == nil {
-			y, m, d := t.Date()
-			return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
-		}
-		// Then try RFC3339Nano
-		if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
-			y, m, d := t.Date()
-			return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
+		if t, err := time.ParseInLocation(time.TimeOnly, s, time.UTC); err == nil {
+			return t.Format(time.TimeOnly), nil
 		}
 	}
-	return time.Time{}, errors.New("date must be 'YYYY-MM-DD' or an RFC3339 formatted string")
+	return "", errors.New("time must be 'HH:MM:SS' formatted string")
+}
+
+// MarshalDate serializes the date as a YYYY-MM-DD string.
+func MarshalDate(v string) graphql.Marshaler {
+	if v == "" {
+		return graphql.Null
+	}
+	return graphql.MarshalString(v)
+}
+
+// UnmarshalDate accepts a 'YYYY-MM-DD' formatted string.
+func UnmarshalDate(v any) (string, error) {
+	if s, ok := v.(string); ok {
+		if t, err := time.ParseInLocation(time.DateOnly, s, time.UTC); err == nil {
+			return t.Format(time.DateOnly), nil
+		}
+	}
+	return "", errors.New("date must be 'YYYY-MM-DD' formatted string")
+}
+
+// MarshalTimezone serializes the timezone as a IANA timezone string.
+func MarshalTimezone(v time.Location) graphql.Marshaler {
+	return graphql.MarshalString(v.String())
+}
+
+// UnmarshalTimezone accepts either 'IANA timezone' formatted string.
+func UnmarshalTimezone(v any) (time.Location, error) {
+	if s, ok := v.(string); ok {
+		if l, err := time.LoadLocation(s); err == nil {
+			return *l, nil
+		}
+	}
+	return time.Location{}, errors.New("timezone must be a valid IANA timezone string")
+}
+
+// MarshalDateTime serializes the datetime as a RFC3339 formatted string.
+func MarshalDateTime(v time.Time) graphql.Marshaler {
+	if v.IsZero() {
+		return graphql.Null
+	}
+	return graphql.MarshalString(v.Format(time.RFC3339))
+}
+
+// UnmarshalDateTime accepts either 'RFC3339' formatted string.
+func UnmarshalDateTime(v any) (time.Time, error) {
+	if s, ok := v.(string); ok {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, errors.New("datetime must be a valid RFC3339 formatted string")
 }
