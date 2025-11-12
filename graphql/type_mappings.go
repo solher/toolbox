@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -36,8 +37,8 @@ func MarshalTime(v string) graphql.Marshaler {
 // UnmarshalTime accepts a 'HH:MM:SS' formatted string.
 func UnmarshalTime(v any) (string, error) {
 	if s, ok := v.(string); ok {
-		if t, err := time.ParseInLocation(time.TimeOnly, s, time.UTC); err == nil {
-			return t.Format(time.TimeOnly), nil
+		if _, err := time.ParseInLocation(time.TimeOnly, s, time.UTC); err == nil {
+			return s, nil
 		}
 	}
 	return "", errors.New("time must be 'HH:MM:SS' formatted string")
@@ -54,8 +55,8 @@ func MarshalDate(v string) graphql.Marshaler {
 // UnmarshalDate accepts a 'YYYY-MM-DD' formatted string.
 func UnmarshalDate(v any) (string, error) {
 	if s, ok := v.(string); ok {
-		if t, err := time.ParseInLocation(time.DateOnly, s, time.UTC); err == nil {
-			return t.Format(time.DateOnly), nil
+		if _, err := time.ParseInLocation(time.DateOnly, s, time.UTC); err == nil {
+			return s, nil
 		}
 	}
 	return "", errors.New("date must be 'YYYY-MM-DD' formatted string")
@@ -92,4 +93,44 @@ func UnmarshalDateTime(v any) (time.Time, error) {
 		}
 	}
 	return time.Time{}, errors.New("datetime must be a valid RFC3339 formatted string")
+}
+
+var countryRegex = regexp.MustCompile("^[A-Z]{2}$")
+
+// MarshalCountry serializes the country as an ISO 3166-1 alpha-2 code.
+func MarshalCountry(v string) graphql.Marshaler {
+	if v == "" {
+		return graphql.Null
+	}
+	return graphql.MarshalString(v)
+}
+
+// UnmarshalCountry ensures the country is an ISO 3166-1 alpha-2 code.
+func UnmarshalCountry(v any) (string, error) {
+	if s, ok := v.(string); ok {
+		if countryRegex.MatchString(s) {
+			return s, nil
+		}
+	}
+	return "", errors.New("country must be a valid ISO 3166-1 alpha-2 code")
+}
+
+var languageRegex = regexp.MustCompile("^[a-z]{2}(-[0-9A-Z]+)?$")
+
+// MarshalLanguage serializes the language as an IETF language tag.
+func MarshalLanguage(v string) graphql.Marshaler {
+	if v == "" {
+		return graphql.Null
+	}
+	return graphql.MarshalString(v)
+}
+
+// UnmarshalLanguage ensures the language is an IETF language tag.
+func UnmarshalLanguage(v any) (string, error) {
+	if s, ok := v.(string); ok {
+		if languageRegex.MatchString(s) {
+			return s, nil
+		}
+	}
+	return "", errors.New("language must be a valid IETF language tag")
 }
