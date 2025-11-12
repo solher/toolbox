@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/solher/toolbox/types"
 )
 
 // MarshalString marshals a string for GqlGen.
@@ -27,48 +28,57 @@ func UnmarshalString(v any) (string, error) {
 }
 
 // MarshalTime serializes the time as a HH:MM:SS string.
-func MarshalTime(v time.Time) graphql.Marshaler {
-	return graphql.MarshalString(v.Format(time.TimeOnly))
+func MarshalTime(v types.Time) graphql.Marshaler {
+	if v.IsZero() {
+		return graphql.Null
+	}
+	return graphql.MarshalString(v.String())
 }
 
 // UnmarshalTime accepts a 'HH:MM:SS' formatted string.
-func UnmarshalTime(v any) (time.Time, error) {
+func UnmarshalTime(v any) (types.Time, error) {
 	if s, ok := v.(string); ok {
 		if parsed, err := time.ParseInLocation(time.TimeOnly, s, time.UTC); err == nil {
-			return parsed, nil
+			return types.Time{Time: parsed}, nil
 		}
 	}
-	return time.Time{}, errors.New("time must be 'HH:MM:SS' formatted string")
+	return types.Time{}, errors.New("time must be 'HH:MM:SS' formatted string")
 }
 
 // MarshalDate serializes the date as a YYYY-MM-DD string.
-func MarshalDate(v time.Time) graphql.Marshaler {
-	return graphql.MarshalString(v.Format(time.DateOnly))
+func MarshalDate(v types.Date) graphql.Marshaler {
+	if v.IsZero() {
+		return graphql.Null
+	}
+	return graphql.MarshalString(v.String())
 }
 
 // UnmarshalDate accepts a 'YYYY-MM-DD' formatted string.
-func UnmarshalDate(v any) (time.Time, error) {
+func UnmarshalDate(v any) (types.Date, error) {
 	if s, ok := v.(string); ok {
 		if parsed, err := time.ParseInLocation(time.DateOnly, s, time.UTC); err == nil {
-			return parsed, nil
+			return types.Date{Time: parsed}, nil
 		}
 	}
-	return time.Time{}, errors.New("date must be 'YYYY-MM-DD' formatted string")
+	return types.Date{}, errors.New("date must be 'YYYY-MM-DD' formatted string")
 }
 
 // MarshalTimeZone serializes the time zone as an IANA time zone string.
-func MarshalTimeZone(v string) graphql.Marshaler {
-	return graphql.MarshalString(v)
+func MarshalTimeZone(v types.TimeZone) graphql.Marshaler {
+	if v.String() == "" {
+		return graphql.Null
+	}
+	return graphql.MarshalString(v.String())
 }
 
 // UnmarshalTimeZone accepts an IANA time zone string.
-func UnmarshalTimeZone(v any) (string, error) {
+func UnmarshalTimeZone(v any) (types.TimeZone, error) {
 	if s, ok := v.(string); ok {
-		if _, err := time.LoadLocation(s); err == nil {
-			return s, nil
+		if parsed, err := time.LoadLocation(s); err == nil {
+			return types.TimeZone{Location: *parsed}, nil
 		}
 	}
-	return "", errors.New("timezone must be a valid IANA time zone string")
+	return types.TimeZone{}, errors.New("timezone must be a valid IANA time zone string")
 }
 
 // MarshalDateTime serializes the datetime as a RFC3339 formatted string.
