@@ -52,6 +52,11 @@ func (n *Time) Scan(value interface{}) error {
 	case string:
 		parsed, err := time.Parse(time.TimeOnly, t)
 		if err != nil {
+			// Just in case, we also try to parse hh:mm
+			if parsed, err := time.Parse("15:04", t); err == nil {
+				*n = Time{Time: parsed}
+				return nil
+			}
 			return err
 		}
 		*n = Time{Time: parsed}
