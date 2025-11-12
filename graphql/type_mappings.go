@@ -62,19 +62,19 @@ func UnmarshalDate(v any) (string, error) {
 	return "", errors.New("date must be 'YYYY-MM-DD' formatted string")
 }
 
-// MarshalTimezone serializes the timezone as a IANA timezone string.
-func MarshalTimezone(v time.Location) graphql.Marshaler {
+// MarshalTimeZone serializes the time zone as an IANA time zone string.
+func MarshalTimeZone(v time.Location) graphql.Marshaler {
 	return graphql.MarshalString(v.String())
 }
 
-// UnmarshalTimezone accepts either 'IANA timezone' formatted string.
-func UnmarshalTimezone(v any) (time.Location, error) {
+// UnmarshalTimeZone accepts an IANA time zone string.
+func UnmarshalTimeZone(v any) (time.Location, error) {
 	if s, ok := v.(string); ok {
 		if l, err := time.LoadLocation(s); err == nil {
 			return *l, nil
 		}
 	}
-	return time.Location{}, errors.New("timezone must be a valid IANA timezone string")
+	return time.Location{}, errors.New("timezone must be a valid IANA time zone string")
 }
 
 // MarshalDateTime serializes the datetime as a RFC3339 formatted string.
