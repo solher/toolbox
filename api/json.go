@@ -32,15 +32,11 @@ type JSON struct {
 // RenderError renders a HTTPError and logs it if it's a 500.
 func (j *JSON) RenderError(ctx context.Context, w http.ResponseWriter, httpError HTTPError, e error) {
 	if e == nil {
-		e = errors.New("null")
+		e = errors.New("nil error")
 	}
 
 	// We log errors and we export them to Sentry.
-	if j.debug || (httpError.Status >= 500 && httpError.Status < 600) {
-		logger := toolbox.LoggerWithRequestContext(ctx, j.logger)
-		logger = toolbox.LoggerWithSentry(ctx, logger)
-		logger.Log("status", httpError.Status, "err", e)
-	}
+	j.RecordError(ctx, httpError, e)
 
 	if j.debug {
 		location, _ := toolbox.HasStack(e)
@@ -63,6 +59,20 @@ func (j *JSON) Render(ctx context.Context, w http.ResponseWriter, status int, ob
 		w.WriteHeader(status)
 	} else {
 		j.renderJSON(w, status, object)
+	}
+}
+
+// RecordError records an error and logs it if it's a 500.
+func (j *JSON) RecordError(ctx context.Context, httpError HTTPError, e error) {
+	if e == nil {
+		e = errors.New("nil error")
+	}
+
+	// We log errors and we export them to Sentry.
+	if j.debug || (httpError.Status >= 500 && httpError.Status < 600) {
+		logger := toolbox.LoggerWithRequestContext(ctx, j.logger)
+		logger = toolbox.LoggerWithSentry(ctx, logger)
+		logger.Log("status", httpError.Status, "err", e)
 	}
 }
 
